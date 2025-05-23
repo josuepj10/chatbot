@@ -1,0 +1,15 @@
+# Created by venv; see https://docs.python.org/3/library/venv.html
+
+# Entorno virtual
+venv/
+
+# Archivos de entorno
+.env
+
+# Caché de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs
+*.log
