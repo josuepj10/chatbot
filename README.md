@@ -1,4 +1,4 @@
-# Chatbot de WhatsApp con FastAPI, Twilio y OpenAI
+# 🤖 Chatbot de WhatsApp con FastAPI, Twilio y OpenAI
 
 Este repositorio contiene un **prototipo funcional** de un chatbot de WhatsApp que utiliza:
 - **FastAPI** (web framework)
@@ -11,53 +11,36 @@ Este repositorio contiene un **prototipo funcional** de un chatbot de WhatsApp q
 ### 🚀 Quickstart
 
 1. Clona este repo:
-   ```bash
-   git clone 
-   cd chatbot
+   git clone https://github.com/tu-usuario/chatbot-whatsapp.git && cd chatbot-whatsapp
 
-2. Crea y activa el entorno: 
-python -m venv venv
-source venv/bin/activate    # o .\venv\Scripts\activate.bat en Windows
-pip install -r requirements.txt
+2. Crea y activa el entorno:
+   python -m venv venv && source venv/bin/activate    # o .\venv\Scripts\activate.bat en Windows
+   pip install -r requirements.txt
 
-3. Copia .env.example a .env y rellena tus credenciales:
-
-dotenv
-Copy
-Edit
-TWILIO_ACCOUNT_SID=...
-TWILIO_AUTH_TOKEN=...
-TWILIO_NUMBER=+14155238886
-OPENAI_API_KEY=...
-DB_USER=...
-DB_PASSWORD=...
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=chatbot
-TO_NUMBER=+506XXXXXXXX
+3. Copia `.env.example` a `.env` y rellena tus credenciales:
+   cp .env.example .env
+   # Luego edita .env:
+   TWILIO_ACCOUNT_SID=...
+   TWILIO_AUTH_TOKEN=...
+   TWILIO_NUMBER=+14155238886
+   OPENAI_API_KEY=...
+   DB_USER=...
+   DB_PASSWORD=...
+   DB_HOST=localhost
+   DB_PORT=5432
+   DB_NAME=chatbot
+   TO_NUMBER=+506XXXXXXXX
 
 4. Prepara la base de datos y aplica migraciones:
-
-bash
-Copy
-Edit
-createdb chatbot
-alembic upgrade head
+   createdb chatbot
+   alembic upgrade head
 
 5. Levanta el servidor y ngrok:
+   uvicorn main:app --reload --host 0.0.0.0 --port 8000
+   ngrok http 8000
 
-bash
-Copy
-Edit
-uvicorn main:app --reload
-ngrok http 8000
-
-6. Configura el webhook en Twilio Sandbox (URL_ngrok/message) y envía “join <código>” a +1 415 523 8886.
+6. Configura el webhook en Twilio Sandbox:
+   - URL: https://<TU_NGROK_URL>/message
+   - Envía “join <código>” a +1 415 523 8886
 
 ¡Envía mensajes por WhatsApp y recibe respuestas de GPT!
-
-
-
-
-
-
