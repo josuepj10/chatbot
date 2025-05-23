@@ -11,7 +11,7 @@ Este repositorio contiene un **prototipo funcional** de un chatbot de WhatsApp q
 ### 🚀 Quickstart
 
 1. Clona este repo:
-   git clone https://github.com/tu-usuario/chatbot-whatsapp.git && cd chatbot-whatsapp
+   Clonar proyecto
 
 2. Crea y activa el entorno:
    python -m venv venv && source venv/bin/activate    # o .\venv\Scripts\activate.bat en Windows
