@@ -1,27 +1,34 @@
+# utils.py
+
 import logging
 from twilio.rest import Client
-from decouple import config
-
-# Lee credenciales desde .env, usando los NOMBRES de las vars, no sus valores
-account_sid   = config("TWILIO_ACCOUNT_SID")
-auth_token    = config("TWILIO_AUTH_TOKEN")
-twilio_number = config("TWILIO_NUMBER")    
-
-# Inicializa Twilio
-client = Client(account_sid, auth_token)
+from settings import settings
 
 # Configura logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+def configure_logger():
+    logging.basicConfig(level=logging.INFO)
+    return logging.getLogger(__name__)
 
-def send_message(to_number: str, body_text: str):
+logger = configure_logger()
+
+# Inicializa Twilio usando Pydantic Settings
+twilio_client = Client(
+    settings.twilio_account_sid,
+    settings.twilio_auth_token
+)
+# Número de Twilio (sandbox o producción)
+twilio_number = settings.twilio_number
+
+def send_message(to_number: str, body_text: str) -> None:
     """
-    Envía un WhatsApp por Twilio y loguea el resultado.
-    - to_number: en formato internacional, sin "whatsapp:" (ej. "+506XXXXXXXX")
-    - body_text: texto del mensaje.
+    Envía un WhatsApp por Twilio y registra el resultado en logs.
+
+    Args:
+        to_number: número destinatario en formato internacional, p.ej. "+506XXXXXXXX"
+        body_text: texto del mensaje a enviar
     """
     try:
-        message = client.messages.create(
+        message = twilio_client.messages.create(
             from_=f"whatsapp:{twilio_number}",
             to=f"whatsapp:{to_number}",
             body=body_text

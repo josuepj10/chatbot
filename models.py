@@ -3,15 +3,17 @@ from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.engine import URL
 from sqlalchemy.orm import declarative_base, sessionmaker
 from decouple import config
+from sqlalchemy.engine import URL
+from settings import settings
 
 # 1) Construir la URL de conexión leyendo del .env
 url = URL.create(
     drivername="postgresql",
-    username=config("DB_USER"),
-    password=config("DB_PASSWORD"),
-    host=config("DB_HOST", default="localhost"),
-    port=config("DB_PORT", cast=int, default=5432),
-    database=config("DB_NAME"),
+    username=settings.db_user,
+    password=settings.db_password,
+    host=settings.db_host,
+    port=settings.db_port,
+    database=settings.db_name
 )
 
 # 2) Crear el engine y la fábrica de sesiones
