@@ -33,5 +33,5 @@ class Conversation(Base):
     response = Column(String)
 
 # 5) Crear la tabla en la BD (si no existe)
-Base.metadata.create_all(engine)
-print("✅ Tabla 'conversations' lista en la base de datos.")
+# Base.metadata.create_all(engine)
+# print("✅ Tabla 'conversations' lista en la base de datos.")
