@@ -2,6 +2,7 @@
 
 import uuid
 import logging
+
 from fastapi import FastAPI, Form, HTTPException, Request, Header, BackgroundTasks, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -27,7 +28,7 @@ app = FastAPI()
 
 
 # ------------------------------------------------------
-# Dependency para obtener la sesión de BD
+# Dependencia para obtener la sesión de BD
 # ------------------------------------------------------
 def get_db():
     db = SessionLocal()
@@ -38,10 +39,28 @@ def get_db():
 
 
 # ------------------------------------------------------
-# Esquema Pydantic para validar “/register”
+# Dependencia para autenticar al cliente (API Key)
+# ------------------------------------------------------
+def get_current_client(
+    x_client_api_key: str = Header(..., convert_underscores=False),
+    db: Session = Depends(get_db)
+):
+    client = db.query(Client).filter(Client.api_key == x_client_api_key).first()
+    if not client:
+        raise HTTPException(status_code=401, detail="API Key inválida")
+    return client
+
+
+# ------------------------------------------------------
+# Esquemas Pydantic para validar requests
 # ------------------------------------------------------
 class ClientCreate(BaseModel):
     name: str
+
+class ResourceCreate(BaseModel):
+    name: str
+    type: str
+    content: str
 
 
 # ------------------------------------------------------
@@ -52,41 +71,52 @@ def register_client(
     info: ClientCreate,
     db: Session = Depends(get_db)
 ):
-    """
-    Registra un nuevo cliente con un nombre único.
-    Devuelve un JSON con {id, name, api_key}.
-    """
-    # 1) Verificar si ya existe un cliente con ese nombre
     existing = db.query(Client).filter(Client.name == info.name).first()
     if existing:
         raise HTTPException(status_code=400, detail="Cliente ya registrado")
 
-    # 2) Generar un api_key único usando UUID4
     new_api_key = str(uuid.uuid4())
-
-    # 3) Crear el registro en la tabla clients
     client = Client(name=info.name, api_key=new_api_key)
     db.add(client)
     db.commit()
     db.refresh(client)
-
-    # 4) Devolver la info del nuevo cliente
     return {"id": client.id, "name": client.name, "api_key": client.api_key}
 
 
 # ------------------------------------------------------
-# Tu endpoint /message (sin cambios)
+# Endpoint para subir recursos del cliente
+# ------------------------------------------------------
+@app.post("/upload_resource", response_model=dict)
+def upload_resource(
+    resource: ResourceCreate,
+    client: Client = Depends(get_current_client),
+    db: Session   = Depends(get_db)
+):
+    """
+    Permite al cliente subir un recurso (texto o JSON) que luego usará el bot.
+    """
+    new_res = ClientResource(
+        client_id=client.id,
+        name=resource.name,
+        type=resource.type,
+        content=resource.content
+    )
+    db.add(new_res)
+    db.commit()
+    db.refresh(new_res)
+    return {
+        "resource_id": new_res.id,
+        "name":        new_res.name,
+        "type":        new_res.type
+    }
+
+
+# ------------------------------------------------------
+# Tu función de background y endpoint /message quedan igual
 # ------------------------------------------------------
 def handle_response(user_number: str, body: str, bot_text: str):
-    """
-    Función que se ejecuta en background para:
-     - enviar el mensaje por WhatsApp
-     - guardar la conversación en la BD
-    """
     try:
-        # Envía el WhatsApp
         send_message(user_number, bot_text)
-        # Persiste en la BD
         db = SessionLocal()
         convo = Conversation(sender=user_number, message=body, response=bot_text)
         db.add(convo)
@@ -105,7 +135,6 @@ async def whatsapp_webhook(
     From: str            = Form(...),
     Body: str            = Form(...)
 ):
-    # 4) Validar firma de Twilio
     validator = RequestValidator(twilio_auth_token)
     url       = str(request.url)
     form      = await request.form()
@@ -115,7 +144,6 @@ async def whatsapp_webhook(
 
     user_number = From.replace("whatsapp:", "")
 
-    # 5) Llamada a OpenAI (sin bloquear el webhook)
     try:
         resp = openai.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -128,8 +156,5 @@ async def whatsapp_webhook(
         logger.exception("Error generando respuesta con OpenAI")
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
-    # 6) Programa el envío y guardado en background
     background_tasks.add_task(handle_response, user_number, Body, bot_text)
-
-    # 7) Twilio solo necesita un 200 OK
     return ""
