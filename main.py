@@ -1,18 +1,21 @@
 # main.py
 
+import uuid
 import logging
-from fastapi import FastAPI, Form, HTTPException, Request, Header, BackgroundTasks
+from fastapi import FastAPI, Form, HTTPException, Request, Header, BackgroundTasks, Depends
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 import openai
 from twilio.request_validator import RequestValidator
 
 from utils import send_message
-from models import SessionLocal, Conversation
+from models import SessionLocal, Conversation, Client, ClientResource
 from settings import settings
 
 # 1) Carga variables de entorno
 load_dotenv()
-openai.api_key = settings.openai_api_key
+openai.api_key    = settings.openai_api_key
 twilio_auth_token = settings.twilio_auth_token
 
 # 2) Configura logging
@@ -22,6 +25,58 @@ logger = logging.getLogger(__name__)
 # 3) Inicializa FastAPI
 app = FastAPI()
 
+
+# ------------------------------------------------------
+# Dependency para obtener la sesión de BD
+# ------------------------------------------------------
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+# ------------------------------------------------------
+# Esquema Pydantic para validar “/register”
+# ------------------------------------------------------
+class ClientCreate(BaseModel):
+    name: str
+
+
+# ------------------------------------------------------
+# Endpoint para registrar un nuevo cliente
+# ------------------------------------------------------
+@app.post("/register", response_model=dict)
+def register_client(
+    info: ClientCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    Registra un nuevo cliente con un nombre único.
+    Devuelve un JSON con {id, name, api_key}.
+    """
+    # 1) Verificar si ya existe un cliente con ese nombre
+    existing = db.query(Client).filter(Client.name == info.name).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Cliente ya registrado")
+
+    # 2) Generar un api_key único usando UUID4
+    new_api_key = str(uuid.uuid4())
+
+    # 3) Crear el registro en la tabla clients
+    client = Client(name=info.name, api_key=new_api_key)
+    db.add(client)
+    db.commit()
+    db.refresh(client)
+
+    # 4) Devolver la info del nuevo cliente
+    return {"id": client.id, "name": client.name, "api_key": client.api_key}
+
+
+# ------------------------------------------------------
+# Tu endpoint /message (sin cambios)
+# ------------------------------------------------------
 def handle_response(user_number: str, body: str, bot_text: str):
     """
     Función que se ejecuta en background para:
@@ -40,6 +95,7 @@ def handle_response(user_number: str, body: str, bot_text: str):
         logger.exception("Error en background task")
     finally:
         db.close()
+
 
 @app.post("/message")
 async def whatsapp_webhook(
